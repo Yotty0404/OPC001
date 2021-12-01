@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace OPC001
 {
@@ -12,8 +13,8 @@ namespace OPC001
             var input2 = Console.ReadLine().Split(' ');
 
             var N = int.Parse(input1[0]);
-            var E = int.Parse(input1[1]);
-            var F = int.Parse(input1[2]);
+            var F = int.Parse(input1[1]);
+            var E = int.Parse(input1[2]);
             var EN = int.Parse(input1[3]);
             var L = input2.Select(x => int.Parse(x)).ToList();
             var L_Origin = new List<int>();
@@ -29,6 +30,7 @@ namespace OPC001
             var cnt = 0;
             var elevator = new List<List<int>>();
 
+            //エレベーターの人数ごとにグループ分け
             foreach (var n in L)
             {
                 if (cnt == 0)
@@ -47,20 +49,14 @@ namespace OPC001
             }
 
             output = string.Join(" ", L);
-            Console.WriteLine(output);
+            //Console.WriteLine(output);
 
-
+            //最初の10グループをエレベーターに追加
             for (int i = 0; i < E; i++)
             {
                 elevator.Add(groups[i]);
             }
 
-
-            foreach (var item in elevator)
-            {
-                output = string.Join(" ", item);
-                Console.WriteLine(output);
-            }
 
             var dic = new Dictionary<int, int>();
 
@@ -68,6 +64,59 @@ namespace OPC001
             {
                 dic.Add(i, elevator[i].Sum());
             }
+
+
+
+            //for (int i = 0; i < E; i++)
+            //{
+            //    output = string.Join(" ", elevator[i]);
+            //    Console.WriteLine(i + ": sum " + elevator[i].Sum() + " " + output);
+            //}
+            //Console.WriteLine();
+
+            var index = E;
+            while (index <= N / EN - 1)
+            {
+                foreach (var d in dic.OrderByDescending(x => x.Value))
+                {
+                    elevator[d.Key].AddRange(groups[index]);
+                    index++;
+                }
+
+                //for (int i = 0; i < E; i++)
+                //{
+                //    output = string.Join(" ", elevator[i]);
+                //    Console.WriteLine(i + ": sum " + elevator[i].Sum() + " " + output);
+                //}
+                //Console.WriteLine();
+
+                //dicを最新の情報で更新
+                dic = new Dictionary<int, int>();
+                for (int i = 0; i < E; i++)
+                {
+                    dic.Add(i, elevator[i].Sum());
+                }
+            }
+
+
+            //前後に空白を追加
+            output = " " + string.Join(" ", L_Origin) + " ";
+            //Console.WriteLine(output);
+            var e_num = 1;
+            foreach (var e in elevator)
+            {
+                foreach (var n in e)
+                {
+                    //空白を挟んで置換することで、数字単位で置換
+                    var re = new Regex(" " + n.ToString() + " ");
+                    output = re.Replace(output, " " + e_num.ToString() + " ", 1);
+                }
+
+                e_num++;
+            }
+
+            //前後の空白を削除して出力
+            Console.WriteLine(output.Substring(1, output.Length - 2));
         }
     }
 }
