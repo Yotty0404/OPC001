@@ -16,12 +16,12 @@ namespace OPC001
             var F = int.Parse(input1[1]);
             var E = int.Parse(input1[2]);
             var EN = int.Parse(input1[3]);
-            var L = input2.Select(x => int.Parse(x)).ToList();
+            var L = input2.Select(x => int.Parse(x) - 1).ToList();
             var L_Origin = new List<int>();
             foreach (var n in L) L_Origin.Add(n);
             L.Sort();
+            L.Reverse();
             var output = "";
-            //L.Reverse();
 
             //var output = string.Join(" ", Enumerable.Repeat("1", N));
 
@@ -54,7 +54,9 @@ namespace OPC001
             //最初の10グループをエレベーターに追加
             for (int i = 0; i < E; i++)
             {
-                elevator.Add(groups[i]);
+                var tempGroup = new List<int>();
+                foreach (var n in groups[i]) tempGroup.Add(n);
+                elevator.Add(tempGroup);
             }
 
 
@@ -62,7 +64,7 @@ namespace OPC001
 
             for (int i = 0; i < E; i++)
             {
-                dic.Add(i, elevator[i].Sum());
+                dic.Add(i, elevator[i].Max());
             }
 
 
@@ -75,27 +77,16 @@ namespace OPC001
             //Console.WriteLine();
 
             var index = E;
-            while (index <= N / EN - 1)
+            while (index < N / EN)
             {
-                foreach (var d in dic.OrderByDescending(x => x.Value))
-                {
-                    elevator[d.Key].AddRange(groups[index]);
-                    index++;
-                }
-
-                //for (int i = 0; i < E; i++)
-                //{
-                //    output = string.Join(" ", elevator[i]);
-                //    Console.WriteLine(i + ": sum " + elevator[i].Sum() + " " + output);
-                //}
-                //Console.WriteLine();
+                //現状最小のエレベーターの番号を取得
+                var e_min = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
+                elevator[e_min].AddRange(groups[index]);
 
                 //dicを最新の情報で更新
-                dic = new Dictionary<int, int>();
-                for (int i = 0; i < E; i++)
-                {
-                    dic.Add(i, elevator[i].Sum());
-                }
+                //往復分＋人数
+                dic[e_min] += groups[index].Max() * 2 + EN;
+                index++;
             }
 
 
