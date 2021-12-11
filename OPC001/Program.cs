@@ -5,10 +5,101 @@ using System.Text.RegularExpressions;
 
 namespace OPC001
 {
+    public class Group
+    {
+        public List<int> Members;
+    }
+
+    [Serializable]
+    public class Elevator
+    {
+        public List<Group> HavingGroup;
+        public int TotalTime;
+        public int EN;
+
+        public Elevator(int en)
+        {
+            HavingGroup = new List<Group>();
+            TotalTime = 0;
+            EN = en;
+        }
+
+        public void Add(Group g)
+        {
+            HavingGroup.Add(g);
+            if (TotalTime == 0)
+            {
+                TotalTime = g.Members.Max();
+            }
+            else
+            {
+                TotalTime += g.Members.Max() * 2 + EN;
+            }
+
+        }
+
+        public Group RemoveAt(int groupIndex)
+        {
+            var rtn = new Group();
+            rtn = HavingGroup[groupIndex];
+            HavingGroup.RemoveAt(groupIndex);
+            TotalTime -= rtn.Members.Max();
+
+            return rtn;
+        }
+    }
+
+    public class Elevators
+    {
+        public List<Elevator> Elevator;
+
+        public Elevators()
+        {
+            Elevator = new List<Elevator>();
+        }
+
+        public int GetElevatorIndexMinTotalTime()
+        {
+            return Elevator.FindIndex(x => x.TotalTime == Elevator.Min(y => y.TotalTime));
+        }
+
+        public Elevators ShallowCopy()
+        {
+            return (Elevators)MemberwiseClone();
+        }
+
+        public Elevators Deepcopy()
+        {
+            var es = ShallowCopy();
+            var rtn = new Elevators();
+
+            foreach (var itemE in es.Elevator)
+            {
+                var e = new Elevator(es.Elevator.FirstOrDefault().EN);
+                foreach (var itemG in itemE.HavingGroup)
+                {
+                    var g = new Group();
+                    g.Members = new List<int>();
+                    foreach (var itemM in itemG.Members)
+                    {
+                        g.Members.Add(itemM);
+                    }
+                    e.Add(g);
+                }
+                rtn.Elevator.Add(e);
+            }
+
+            return rtn;
+        }
+    }
+
+
     public class Program
     {
         public static void Main()
         {
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
             var input1 = Console.ReadLine().Split(' ');
             var input2 = Console.ReadLine().Split(' ');
 
@@ -23,91 +114,137 @@ namespace OPC001
             L.Reverse();
             var output = "";
 
-            //var output = string.Join(" ", Enumerable.Repeat("1", N));
+            var groups = new List<Group>();
+            var elevators = new Elevators();
 
-            var groups = new List<List<int>>();
-            var group = new List<int>();
-            var cnt = 0;
-            var elevator = new List<List<int>>();
-
-            //エレベーターの人数ごとにグループ分け
-            foreach (var n in L)
+            //エレベーターの収容人数ごとにグループ分け
+            for (int i = 0; i < N / EN; i++)
             {
-                if (cnt == 0)
-                {
-                    group = new List<int>();
-                }
-                group.Add(n);
-
-                cnt++;
-
-                if (cnt == EN)
-                {
-                    groups.Add(group);
-                    cnt = 0;
-                }
+                groups.Add(new Group { Members = L.GetRange(i * EN, EN) });
             }
 
-            output = string.Join(" ", L);
-            //Console.WriteLine(output);
 
-            //最初の10グループをエレベーターに追加
+            //最初の10グループを各エレベーターに追加
             for (int i = 0; i < E; i++)
             {
-                var tempGroup = new List<int>();
-                foreach (var n in groups[i]) tempGroup.Add(n);
-                elevator.Add(tempGroup);
+                var e = new Elevator(EN);
+                e.Add(groups[i]);
+                elevators.Elevator.Add(e);
             }
-
-
-            var dic = new Dictionary<int, int>();
-
-            for (int i = 0; i < E; i++)
-            {
-                dic.Add(i, elevator[i].Max());
-            }
-
-
-
-            //for (int i = 0; i < E; i++)
-            //{
-            //    output = string.Join(" ", elevator[i]);
-            //    Console.WriteLine(i + ": sum " + elevator[i].Sum() + " " + output);
-            //}
-            //Console.WriteLine();
 
             var index = E;
             while (index < N / EN)
             {
-                //現状最小のエレベーターの番号を取得
-                var e_min = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
-                elevator[e_min].AddRange(groups[index]);
-
-                //dicを最新の情報で更新
-                //往復分＋人数
-                dic[e_min] += groups[index].Max() * 2 + EN;
+                //現状トータルタイムが最小のエレベーターにグループを追加
+                elevators.Elevator[elevators.GetElevatorIndexMinTotalTime()].Add(groups[index]);
                 index++;
             }
 
+            var random = new Random(4);
+            var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
+            var tempTime = 0;
+            var elevatorIndex = 0;
+            var nextelevatorIndex = 0;
+            var groupIndex = 0;
+            var nextgroupIndex = 0;
+
+            var cnt = 0;
+            while (true)
+            //while (sw.Elapsed < LIMIT_TIME)
+            {
+                cnt++;
+                var tempElavators = elevators.Deepcopy();
+                tempTime = elevators.Elevator.Max(x => x.TotalTime);
+                elevatorIndex = random.Next(E);
+                nextelevatorIndex = random.Next(E);
+                if (elevatorIndex == nextelevatorIndex)
+                {
+                    continue;
+                }
+
+                //インデックス0を避けて、グループインデックスを生成
+                groupIndex = random.Next(elevators.Elevator[elevatorIndex].HavingGroup.Count() - 1) + 1;
+                nextgroupIndex = random.Next(elevators.Elevator[nextelevatorIndex].HavingGroup.Count() - 1) + 1;
+
+                //グループごと交換
+                var g = new Group();
+                g = elevators.Elevator[elevatorIndex].RemoveAt(groupIndex);
+                elevators.Elevator[nextelevatorIndex].Add(g);
+
+                g = new Group();
+                g = elevators.Elevator[nextelevatorIndex].RemoveAt(nextgroupIndex);
+                elevators.Elevator[elevatorIndex].Add(g);
+
+                if (elevators.Elevator.Max(x => x.TotalTime) >= tempTime)
+                {
+                    elevators = tempElavators;
+                }
+                else
+                {
+                    var fjkdasklfj = 1;
+                }
+            }
 
             //前後に空白を追加
             output = " " + string.Join(" ", L_Origin) + " ";
             //Console.WriteLine(output);
             var e_num = 1;
-            foreach (var e in elevator)
+            foreach (var e in elevators.Elevator)
             {
-                foreach (var n in e)
+                foreach (var g in e.HavingGroup)
                 {
-                    //空白を挟んで置換することで、数字単位で置換
-                    var re = new Regex(" " + n.ToString() + " ");
-                    output = re.Replace(output, " " + e_num.ToString() + " ", 1);
+                    foreach (var n in g.Members)
+                    {
+                        //空白を挟んで置換することで、数字単位で置換
+                        var re = new Regex(" " + n.ToString() + " ");
+                        output = re.Replace(output, " " + e_num.ToString() + " ", 1);
+                    }
                 }
 
                 e_num++;
             }
 
-            //前後の空白を削除して出力
-            Console.WriteLine(output.Substring(1, output.Length - 2));
+            //前後の空白を削除
+            output = output.Substring(1, output.Length - 2);
+            var outputL = output.Split(' ').Select(x => int.Parse(x)).ToList();
+            //var tempScoreTime = CalcTime(outputL);
+            //var nextScoreTime = 0;
+            //var tempFloor = 0;
+            //var nextFloor = 0;
+
+            //var random = new Random(4);
+            //var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
+
+
+            //cnt = 0;
+            //while (sw.Elapsed < LIMIT_TIME)
+            //{
+            //    cnt++;
+            //    //最後のグループは固定
+            //    index = random.Next(N-E*EN);
+            //    tempFloor = outputL[index];
+            //    nextFloor = random.Next(E) + 1;
+            //    if (tempFloor == nextFloor)
+            //    {
+            //        continue;
+            //    }
+
+            //    outputL[index] = nextFloor;
+            //    nextScoreTime = CalcTime(outputL);
+            //    if (nextScoreTime >= tempScoreTime)
+            //    {
+            //        outputL[index] = tempFloor;
+            //    }
+            //    else
+            //    {
+            //        tempScoreTime = nextScoreTime;
+            //    }
+            //}
+
+            //var test = cnt;
+            sw.Stop();
+            Console.WriteLine(String.Join(" ", outputL));
         }
     }
+
 }
