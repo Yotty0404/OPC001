@@ -5,95 +5,6 @@ using System.Text.RegularExpressions;
 
 namespace OPC001
 {
-    public class Group
-    {
-        public List<int> Members;
-    }
-
-    [Serializable]
-    public class Elevator
-    {
-        public List<Group> HavingGroup;
-        public int TotalTime;
-        public int EN;
-
-        public Elevator(int en)
-        {
-            HavingGroup = new List<Group>();
-            TotalTime = 0;
-            EN = en;
-        }
-
-        public void Add(Group g)
-        {
-            HavingGroup.Add(g);
-            if (TotalTime == 0)
-            {
-                TotalTime = g.Members.Max();
-            }
-            else
-            {
-                TotalTime += g.Members.Max() * 2 + EN;
-            }
-
-        }
-
-        public Group RemoveAt(int groupIndex)
-        {
-            var rtn = new Group();
-            rtn = HavingGroup[groupIndex];
-            HavingGroup.RemoveAt(groupIndex);
-            TotalTime -= rtn.Members.Max();
-
-            return rtn;
-        }
-    }
-
-    public class Elevators
-    {
-        public List<Elevator> Elevator;
-
-        public Elevators()
-        {
-            Elevator = new List<Elevator>();
-        }
-
-        public int GetElevatorIndexMinTotalTime()
-        {
-            return Elevator.FindIndex(x => x.TotalTime == Elevator.Min(y => y.TotalTime));
-        }
-
-        public Elevators ShallowCopy()
-        {
-            return (Elevators)MemberwiseClone();
-        }
-
-        public Elevators Deepcopy()
-        {
-            var es = ShallowCopy();
-            var rtn = new Elevators();
-
-            foreach (var itemE in es.Elevator)
-            {
-                var e = new Elevator(es.Elevator.FirstOrDefault().EN);
-                foreach (var itemG in itemE.HavingGroup)
-                {
-                    var g = new Group();
-                    g.Members = new List<int>();
-                    foreach (var itemM in itemG.Members)
-                    {
-                        g.Members.Add(itemM);
-                    }
-                    e.Add(g);
-                }
-                rtn.Elevator.Add(e);
-            }
-
-            return rtn;
-        }
-    }
-
-
     public class Program
     {
         public static void Main()
@@ -114,135 +25,158 @@ namespace OPC001
             L.Reverse();
             var output = "";
 
-            var groups = new List<Group>();
-            var elevators = new Elevators();
+            //var output = string.Join(" ", Enumerable.Repeat("1", N));
 
-            //エレベーターの収容人数ごとにグループ分け
-            for (int i = 0; i < N / EN; i++)
+            var groups = new List<List<int>>();
+            var group = new List<int>();
+            var cnt = 0;
+            var elevator = new List<List<int>>();
+
+            //エレベーターの人数ごとにグループ分け
+            foreach (var n in L)
             {
-                groups.Add(new Group { Members = L.GetRange(i * EN, EN) });
+                if (cnt == 0)
+                {
+                    group = new List<int>();
+                }
+                group.Add(n);
+
+                cnt++;
+
+                if (cnt == EN)
+                {
+                    groups.Add(group);
+                    cnt = 0;
+                }
+            }
+
+            output = string.Join(" ", L);
+            //Console.WriteLine(output);
+
+            //最初の10グループをエレベーターに追加
+            for (int i = 0; i < E; i++)
+            {
+                var tempGroup = new List<int>();
+                foreach (var n in groups[i]) tempGroup.Add(n);
+                elevator.Add(tempGroup);
             }
 
 
-            //最初の10グループを各エレベーターに追加
+            var dic = new Dictionary<int, int>();
+
             for (int i = 0; i < E; i++)
             {
-                var e = new Elevator(EN);
-                e.Add(groups[i]);
-                elevators.Elevator.Add(e);
+                dic.Add(i, elevator[i].Max());
             }
 
             var index = E;
             while (index < N / EN)
             {
-                //現状トータルタイムが最小のエレベーターにグループを追加
-                elevators.Elevator[elevators.GetElevatorIndexMinTotalTime()].Add(groups[index]);
+                //現状最小のエレベーターの番号を取得
+                var e_min = dic.OrderBy(x => x.Value).FirstOrDefault().Key;
+                elevator[e_min].AddRange(groups[index]);
+
+                //dicを最新の情報で更新
+                //往復分＋人数
+                dic[e_min] += groups[index].Max() * 2 + EN;
                 index++;
             }
 
+            Func<int> CalcTime = () =>
+            {
+                int rtnTime = 0;
+                int tempTime = 0;
+
+                foreach (var item in elevator)
+                {
+                    tempTime = 0;
+                    item.Sort();
+                    var amari = item.Count % EN;
+
+                    if (amari == 0)
+                    {
+                        amari = 5;
+                    }
+
+                    for (int i = 0; i < item.Count; i++)
+                    {
+                        if (i < item.Count - amari)
+                        {
+                            tempTime += item[i] * 2 + EN;
+                        }
+                        else
+                        {
+                            tempTime += item[i];
+                        }
+                    }
+
+                    rtnTime = System.Math.Max(rtnTime,tempTime);
+                }
+
+                return rtnTime;
+            };
+
+
+            var tempTimeScore = CalcTime();
+            var nextTimeScore = 0;
+            var tempElevatorIndex = 0;
+            var nextElevatorIndex = 0;
+            var changeIndex = 0;
+
             var random = new Random(4);
             var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
-            var tempTime = 0;
-            var elevatorIndex = 0;
-            var nextelevatorIndex = 0;
-            var groupIndex = 0;
-            var nextgroupIndex = 0;
 
-            var cnt = 0;
-            while (true)
-            //while (sw.Elapsed < LIMIT_TIME)
+
+            cnt = 0;
+            while (sw.Elapsed < LIMIT_TIME)
             {
                 cnt++;
-                var tempElavators = elevators.Deepcopy();
-                tempTime = elevators.Elevator.Max(x => x.TotalTime);
-                elevatorIndex = random.Next(E);
-                nextelevatorIndex = random.Next(E);
-                if (elevatorIndex == nextelevatorIndex)
+                tempElevatorIndex = random.Next(E);
+                nextElevatorIndex = random.Next(E);
+                if (tempElevatorIndex == nextElevatorIndex)
                 {
                     continue;
                 }
 
-                //インデックス0を避けて、グループインデックスを生成
-                groupIndex = random.Next(elevators.Elevator[elevatorIndex].HavingGroup.Count() - 1) + 1;
-                nextgroupIndex = random.Next(elevators.Elevator[nextelevatorIndex].HavingGroup.Count() - 1) + 1;
+                changeIndex = random.Next(elevator[tempElevatorIndex].Count);
+                elevator[nextElevatorIndex].Add(elevator[tempElevatorIndex][changeIndex]);
+                elevator[tempElevatorIndex].RemoveAt(changeIndex);
 
-                //グループごと交換
-                var g = new Group();
-                g = elevators.Elevator[elevatorIndex].RemoveAt(groupIndex);
-                elevators.Elevator[nextelevatorIndex].Add(g);
+                nextTimeScore = CalcTime();
 
-                g = new Group();
-                g = elevators.Elevator[nextelevatorIndex].RemoveAt(nextgroupIndex);
-                elevators.Elevator[elevatorIndex].Add(g);
-
-                if (elevators.Elevator.Max(x => x.TotalTime) >= tempTime)
-                {
-                    elevators = tempElavators;
-                }
-                else
-                {
-                    var fjkdasklfj = 1;
-                }
+                //if (nextScoreTime > tempScoreTime)
+                //{
+                //    //元に戻す
+                //    outputL[index] = tempFloor;
+                //}
+                //else
+                //{
+                //    tempScoreTime = nextScoreTime;
+                //}
             }
+
+            var test = cnt;
+            sw.Stop();
+
 
             //前後に空白を追加
             output = " " + string.Join(" ", L_Origin) + " ";
-            //Console.WriteLine(output);
             var e_num = 1;
-            foreach (var e in elevators.Elevator)
+            foreach (var e in elevator)
             {
-                foreach (var g in e.HavingGroup)
+                foreach (var n in e)
                 {
-                    foreach (var n in g.Members)
-                    {
-                        //空白を挟んで置換することで、数字単位で置換
-                        var re = new Regex(" " + n.ToString() + " ");
-                        output = re.Replace(output, " " + e_num.ToString() + " ", 1);
-                    }
+                    //空白を挟んで置換することで、数字単位で置換
+                    var re = new Regex(" " + n.ToString() + " ");
+                    output = re.Replace(output, " " + e_num.ToString() + " ", 1);
                 }
 
                 e_num++;
             }
 
-            //前後の空白を削除
             output = output.Substring(1, output.Length - 2);
+
             var outputL = output.Split(' ').Select(x => int.Parse(x)).ToList();
-            //var tempScoreTime = CalcTime(outputL);
-            //var nextScoreTime = 0;
-            //var tempFloor = 0;
-            //var nextFloor = 0;
-
-            //var random = new Random(4);
-            //var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
-
-
-            //cnt = 0;
-            //while (sw.Elapsed < LIMIT_TIME)
-            //{
-            //    cnt++;
-            //    //最後のグループは固定
-            //    index = random.Next(N-E*EN);
-            //    tempFloor = outputL[index];
-            //    nextFloor = random.Next(E) + 1;
-            //    if (tempFloor == nextFloor)
-            //    {
-            //        continue;
-            //    }
-
-            //    outputL[index] = nextFloor;
-            //    nextScoreTime = CalcTime(outputL);
-            //    if (nextScoreTime >= tempScoreTime)
-            //    {
-            //        outputL[index] = tempFloor;
-            //    }
-            //    else
-            //    {
-            //        tempScoreTime = nextScoreTime;
-            //    }
-            //}
-
-            //var test = cnt;
-            sw.Stop();
             Console.WriteLine(String.Join(" ", outputL));
         }
     }
