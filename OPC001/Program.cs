@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace OPC001
 {
@@ -36,6 +37,7 @@ namespace OPC001
             var l = new List<int>();
             var chunkSize = EN;
             for (int i = 0; i < (N - groupNum) / (groupNum); i++)
+            //for (int i = 0; i < (N) / (groupNum); i++)
             {
                 l = L.GetRange(i * groupNum, groupNum);
                 l.Sort();
@@ -76,19 +78,19 @@ namespace OPC001
             Func<int> CalcTime = () =>
             {
                 var returnTotalTime = 0;
-                for (int i = 0; i < tempElevator.Count; i++)
+                for (int x = 0; x < tempElevator.Count; x++)
                 {
-                    var tempTotalTime = timeElevator[i];
+                    var tempTotalTime = timeElevator[x];
 
-                    for (int j = 0; j < tempElevator[i].Count; j++)
+                    for (int y = 0; y < tempElevator[x].Count; y++)
                     {
-                        if (j != tempElevator[i].Count - 1)
+                        if (y != tempElevator[x].Count - 1)
                         {
-                            tempTotalTime += groups[tempElevator[i][j]].Max() * 2 + EN;
+                            tempTotalTime += groups[tempElevator[x][y]].Max() * 2 + EN;
                         }
                         else
                         {
-                            tempTotalTime += groups[tempElevator[i][j]].Max() + EN;
+                            tempTotalTime += groups[tempElevator[x][y]].Max() + EN;
                         }
                     }
 
@@ -127,57 +129,59 @@ namespace OPC001
                         }
                     }
                 }
-            }
+                //}
 
 
-            //出力用のリストを更新
-            for (int elevator_num = 0; elevator_num < OptimalSolutionGroups.Count; elevator_num++)
-            {
-                for (int j = 0; j < OptimalSolutionGroups[elevator_num].Count; j++)
+                //出力用のリストを更新
+                for (int elevator_num = 0; elevator_num < OptimalSolutionGroups.Count; elevator_num++)
                 {
-                    foreach (var n in groups[OptimalSolutionGroups[elevator_num][j]])
+                    for (int j = 0; j < OptimalSolutionGroups[elevator_num].Count; j++)
                     {
-                        var index = L.FindIndex(x => x == n);
-                        //乗るエレベーターを更新
-                        L_Output[index] = elevator_num + 1;
-                        //すでにエレベーターに乗った人は0で更新
-                        L[index] = 0;
+                        foreach (var n in groups[OptimalSolutionGroups[elevator_num][j]])
+                        {
+                            var index = L.FindIndex(x => x == n);
+                            //乗るエレベーターを更新
+                            L_Output[index] = elevator_num + 1;
+                            //すでにエレベーターに乗った人は0で更新
+                            L[index] = 0;
+                        }
                     }
                 }
+
+
+                var random = new Random(4);
+                //var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
+                var tempScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+
+                //var cnt = 0;
+                //while (sw.Elapsed < LIMIT_TIME)
+                //{
+                //    cnt++;
+                //    var index = random.Next(N);
+                //    var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+                //    var tempFloor = L_Output[index];
+                //    var nextFloor = random.Next(E) + 1;
+                //    if (tempFloor == nextFloor)
+                //    {
+                //        continue;
+                //    }
+
+                //    L_Output[index] = nextFloor;
+                //    nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+                //    if (nextScoreTime < tempScoreTime)
+                //    {
+                //        tempScoreTime = nextScoreTime;
+                //    }
+                //    else
+                //    {
+                //        L_Output[index] = tempFloor;
+                //    }
+                //}
+
+
+                Console.WriteLine(String.Join(" ", L_Output));
             }
 
-
-            var random = new Random(4);
-            //var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
-            //var tempScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-
-            //var cnt = 0;
-            //while (sw.Elapsed < LIMIT_TIME)
-            //{
-            //    cnt++;
-            //    var index = random.Next(N);
-            //    var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-            //    var tempFloor = L_Output[index];
-            //    var nextFloor = random.Next(E) + 1;
-            //    if (tempFloor == nextFloor)
-            //    {
-            //        continue;
-            //    }
-
-            //    L_Output[index] = nextFloor;
-            //    nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-            //    if (nextScoreTime < tempScoreTime)
-            //    {
-            //        tempScoreTime = nextScoreTime;
-            //    }
-            //    else
-            //    {
-            //        L_Output[index] = tempFloor;
-            //    }
-            //}
-
-
-            Console.WriteLine(String.Join(" ", L_Output));
         }
 
         public static int Calc(int N, int X, int Y, int Z, List<int> a, List<int> b)
@@ -194,25 +198,33 @@ namespace OPC001
             var elevators = queues.Select(q => new Elevator(Z, q)).ToList();
 
             var t = 0;
+            var sb = new StringBuilder();
             while (!elevators.All(x => x.Finished))
             {
                 t++;
+                var str = t.ToString() + ",";
                 foreach (var elevator in elevators)
                 {
                     elevator.Do();
+                    str += String.Join(" ", elevator._q.ToList()) + "," + elevator._currentFloor.ToString() + "," + String.Join(" ", elevator._shanins) + "," + elevator.Finished.ToString() + ",";
                 }
+
+                sb.AppendLine(str);
+
             }
+
+            System.IO.File.WriteAllText(@"C:\Users\tyuke\Desktop\OPC確認.txt", sb.ToString());
 
             return t;
         }
 
         internal class Elevator
         {
-            private readonly int Z;
-            private readonly Queue<int> _q;
+            public readonly int Z;
+            public readonly Queue<int> _q;
 
-            private int _currentFloor = 1;
-            private List<int> _shanins = new List<int>();
+            public int _currentFloor = 1;
+            public List<int> _shanins = new List<int>();
 
             public bool Finished { get; internal set; }
 
@@ -268,18 +280,17 @@ namespace OPC001
                 }
             }
         }
-    }
 
-    public static class Extensions
-    {
-        // 指定サイズでのチャンクに分割する拡張メソッド
-        public static IEnumerable<IEnumerable<T>> Chunks<T>(this IEnumerable<T> list, int size)
+        public static class Extensions
         {
-            while (list.Any())
+            // 指定サイズでのチャンクに分割する拡張メソッド
+            public static IEnumerable<IEnumerable<T>> Chunks<T>(this IEnumerable<T> list, int size)
             {
-                yield return list.Take(size);
-                list = list.Skip(size);
+                while (list.Any())
+                {
+                    yield return list.Take(size);
+                    list = list.Skip(size);
+                }
             }
         }
     }
-}
