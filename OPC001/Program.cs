@@ -33,10 +33,11 @@ namespace OPC001
                 timeElevator.Add(0);
             }
 
+            var l = new List<int>();
             var chunkSize = EN;
-            for (int i = 0; i < N / groupNum; i++)
+            for (int i = 0; i < (N - groupNum) / (groupNum); i++)
             {
-                var l = L.GetRange(i * groupNum, groupNum);
+                l = L.GetRange(i * groupNum, groupNum);
                 l.Sort();
                 foreach (var group in l.Chunks(EN))
                 {
@@ -55,34 +56,125 @@ namespace OPC001
                 }
             }
 
-            var random = new Random(4);
-            var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
-            var tempScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+            l = L.GetRange(N - groupNum, groupNum);
+            l.Sort();
+            var groups = l.Chunks(EN).ToList();
 
-            var cnt = 0;
-            while (sw.Elapsed < LIMIT_TIME)
+            var tempElevator = new List<List<int>>();
+            var OptimalSolutionTotalTime = int.MaxValue;
+            var OptimalSolutionGroups = new List<List<int>>();
+
+            Action InitializeList = () =>
             {
-                cnt++;
-                var index = random.Next(N);
-                var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-                var tempFloor = L_Output[index];
-                var nextFloor = random.Next(E) + 1;
-                if (tempFloor == nextFloor)
+                tempElevator = new List<List<int>>();
+                for (int i = 0; i < E; i++)
                 {
-                    continue;
+                    tempElevator.Add(new List<int>());
                 }
+            };
 
-                L_Output[index] = nextFloor;
-                nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-                if (nextScoreTime < tempScoreTime)
+            Func<int> CalcTime = () =>
+            {
+                var returnTotalTime = 0;
+                for (int i = 0; i < tempElevator.Count; i++)
                 {
-                    tempScoreTime = nextScoreTime;
+                    var tempTotalTime = timeElevator[i];
+
+                    for (int j = 0; j < tempElevator[i].Count; j++)
+                    {
+                        if (j != tempElevator[i].Count - 1)
+                        {
+                            tempTotalTime += groups[tempElevator[i][j]].Max() * 2 + EN;
+                        }
+                        else
+                        {
+                            tempTotalTime += groups[tempElevator[i][j]].Max() + EN;
+                        }
+                    }
+
+                    returnTotalTime = Math.Max(returnTotalTime, tempTotalTime);
                 }
-                else
+                return returnTotalTime;
+            };
+
+            //最後の5グループは全探索
+            for (int i = 0; i < E; i++)
+            {
+                for (int j = 0; j < E; j++)
                 {
-                    L_Output[index] = tempFloor;
+                    for (int k = 0; k < E; k++)
+                    {
+                        for (int m = 0; m < E; m++)
+                        {
+                            for (int n = 0; n < E; n++)
+                            {
+                                InitializeList();
+
+                                tempElevator[i].Add(0);
+                                tempElevator[j].Add(1);
+                                tempElevator[k].Add(2);
+                                tempElevator[m].Add(3);
+                                tempElevator[n].Add(4);
+
+                                var totalTime = CalcTime();
+
+                                if (OptimalSolutionTotalTime > totalTime)
+                                {
+                                    OptimalSolutionTotalTime = totalTime;
+                                    OptimalSolutionGroups = tempElevator;
+                                }
+                            }
+                        }
+                    }
                 }
             }
+
+
+            //出力用のリストを更新
+            for (int elevator_num = 0; elevator_num < OptimalSolutionGroups.Count; elevator_num++)
+            {
+                for (int j = 0; j < OptimalSolutionGroups[elevator_num].Count; j++)
+                {
+                    foreach (var n in groups[OptimalSolutionGroups[elevator_num][j]])
+                    {
+                        var index = L.FindIndex(x => x == n);
+                        //乗るエレベーターを更新
+                        L_Output[index] = elevator_num + 1;
+                        //すでにエレベーターに乗った人は0で更新
+                        L[index] = 0;
+                    }
+                }
+            }
+
+
+            var random = new Random(4);
+            //var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
+            //var tempScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+
+            //var cnt = 0;
+            //while (sw.Elapsed < LIMIT_TIME)
+            //{
+            //    cnt++;
+            //    var index = random.Next(N);
+            //    var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+            //    var tempFloor = L_Output[index];
+            //    var nextFloor = random.Next(E) + 1;
+            //    if (tempFloor == nextFloor)
+            //    {
+            //        continue;
+            //    }
+
+            //    L_Output[index] = nextFloor;
+            //    nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+            //    if (nextScoreTime < tempScoreTime)
+            //    {
+            //        tempScoreTime = nextScoreTime;
+            //    }
+            //    else
+            //    {
+            //        L_Output[index] = tempFloor;
+            //    }
+            //}
 
 
             Console.WriteLine(String.Join(" ", L_Output));
