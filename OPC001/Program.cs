@@ -36,14 +36,24 @@ namespace OPC001
             var l = new List<int>();
             var chunkSize = EN;
             for (int i = 0; i < (N) / (groupNum); i++)
-            //for (int i = 0; i < (N - groupNum) / (groupNum); i++)
             {
                 l = L.GetRange(i * groupNum, groupNum);
                 l.Sort();
+
+                //現状タイムの大きい順のリストを作成
+                var isnertIndex = 0;
+                var dicTime = new Dictionary<int, int>();
+
+                for (int j = 0; j < timeElevator.Count; j++)
+                {
+                    dicTime.Add(j, timeElevator[j]);
+                }
+                var sortedDicTime = dicTime.OrderByDescending(x => x.Value).ToList();
+
+
                 foreach (var group in l.Chunks(EN))
                 {
-                    //現状最小時間のところに加算
-                    var ele_num = timeElevator.FindIndex(x => x == timeElevator.Max());
+                    var ele_num = sortedDicTime[isnertIndex].Key;
                     timeElevator[ele_num] += group.Max() * 2 + EN;
 
                     foreach (var n in group)
@@ -54,191 +64,47 @@ namespace OPC001
                         //すでにエレベーターに乗った人は0で更新
                         L[index] = 0;
                     }
+
+                    isnertIndex++;
+
                 }
             }
 
-            //l = L.GetRange(N - groupNum, groupNum);
-            //var dic = new Dictionary<int, int>();
-
-
-            //for (int i = 0; i < l.Count; i++)
-            //{
-            //    dic.Add(i, l[i]);
-            //}
-            //var sortedDic = dic.OrderBy(x => x.Value).ToList();
-
-            //var groups = sortedDic.Chunks(EN).ToList();
-
-            //var tempElevator = new List<List<int>>();
-            //var OptimalSolutionTotalTime = int.MaxValue;
-            //var OptimalSolutionGroups = new List<List<int>>();
-
-            //Action InitializeList = () =>
-            //{
-            //    tempElevator = new List<List<int>>();
-            //    for (int i = 0; i < E; i++)
-            //    {
-            //        tempElevator.Add(new List<int>());
-            //    }
-            //};
-
-            //Func<int> CalcTime = () =>
-            //{
-            //    var returnTotalTime = 0;
-
-            //    for (int i = 0; i < tempElevator.Count; i++)
-            //    {
-            //        var tempTotalTime = timeElevator[i];
-
-            //        if (tempElevator[i].Count == 0)
-            //        {
-            //            returnTotalTime = Math.Max(returnTotalTime, tempTotalTime);
-            //            continue;
-            //        }
-
-            //        if (tempElevator[i].Count == 1)
-            //        {
-            //            tempTotalTime += groups[tempElevator[i][0]].Max(x => x.Value) + EN;
-            //            returnTotalTime = Math.Max(returnTotalTime, tempTotalTime);
-            //            continue;
-            //        }
-
-            //        //同じエレベーターに複数ある時は、階数順ではなく、並び順で時間を計算する
-            //        var newDic = new Dictionary<int, int>();
-            //        foreach (var n in tempElevator[i])
-            //        {
-            //            foreach (var item in groups[n])
-            //            {
-            //                newDic.Add(item.Key, item.Value);
-            //            }
-            //        }
-
-            //        sortedDic = newDic.OrderBy(x => x.Key).ToList();
-            //        var newGroups = sortedDic.Chunks(EN).ToList();
-
-            //        for (int j = 0; j < tempElevator[i].Count; j++)
-            //        {
-            //            if (j != tempElevator[i].Count - 1)
-            //            {
-            //                tempTotalTime += newGroups[j].Max(x => x.Value) * 2 + EN;
-            //            }
-            //            else
-            //            {
-            //                tempTotalTime += newGroups[j].Max(x => x.Value) + EN;
-            //            }
-            //        }
-
-            //        returnTotalTime = Math.Max(returnTotalTime, tempTotalTime);
-            //    }
-            //    return returnTotalTime;
-            //};
-
-            ////最後の5グループは全探索
-            //for (int i = 0; i < E; i++)
-            //{
-            //    for (int j = 0; j < E; j++)
-            //    {
-            //        for (int k = 0; k < E; k++)
-            //        {
-            //            for (int m = 0; m < E; m++)
-            //            {
-            //                for (int n = 0; n < E; n++)
-            //                {
-            //                    InitializeList();
-
-            //                    tempElevator[i].Add(0);
-            //                    tempElevator[j].Add(1);
-            //                    tempElevator[k].Add(2);
-            //                    tempElevator[m].Add(3);
-            //                    tempElevator[n].Add(4);
-
-            //                    var totalTime = CalcTime();
-
-            //                    if (OptimalSolutionTotalTime > totalTime)
-            //                    {
-            //                        OptimalSolutionTotalTime = totalTime;
-            //                        OptimalSolutionGroups = tempElevator;
-            //                    }
-            //                }
-            //            }
-            //        }
-            //    }
-            //}
-
-
-            ////出力用のリストを更新
-            //for (int elevator_num = 0; elevator_num < OptimalSolutionGroups.Count; elevator_num++)
-            //{
-            //    for (int j = 0; j < OptimalSolutionGroups[elevator_num].Count; j++)
-            //    {
-            //        if (OptimalSolutionGroups[elevator_num].Count == 1)
-            //        {
-            //            foreach (var n in groups[OptimalSolutionGroups[elevator_num][j]])
-            //            {
-            //                var index = L.FindIndex(x => x == n.Value);
-            //                //乗るエレベーターを更新
-            //                L_Output[index] = elevator_num + 1;
-            //                //すでにエレベーターに乗った人は0で更新
-            //                L[index] = 0;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            //同じエレベーターに複数ある時は、階数順ではなく、並び順で時間を計算する
-            //            var newDic = new Dictionary<int, int>();
-            //            foreach (var n in OptimalSolutionGroups[elevator_num])
-            //            {
-            //                foreach (var item in groups[n])
-            //                {
-            //                    newDic.Add(item.Key, item.Value);
-            //                }
-            //            }
-
-            //            sortedDic = newDic.OrderBy(x => x.Key).ToList();
-            //            var newGroups = sortedDic.Chunks(EN).ToList();
-
-            //            foreach (var n in newGroups[j])
-            //            {
-            //                var index = L.FindIndex(x => x == n.Value);
-            //                //乗るエレベーターを更新
-            //                L_Output[index] = elevator_num + 1;
-            //                //すでにエレベーターに乗った人は0で更新
-            //                L[index] = 0;
-            //            }
-            //        }
-            //    }
-            //}
-
-
-            var random = new Random(4);
+            var random = new Random(1);
             var LIMIT_TIME = new TimeSpan(0, 0, 0, 1, 900);
             var tempScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
 
-            var cnt = 0;
-            //while (sw.Elapsed < LIMIT_TIME)
-            //{
-            //    cnt++;
-            //    var index = random.Next(N);
-            //    var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-            //    var tempFloor = L_Output[index];
-            //    var nextFloor = random.Next(E) + 1;
-            //    if (tempFloor == nextFloor)
-            //    {
-            //        continue;
-            //    }
+            //乱数で2人の乗るエレベーターを交換し続ける
+            while (sw.Elapsed < LIMIT_TIME)
+            {
+                var index1 = random.Next(N);
+                var index2 = random.Next(N);
+                if (index1 == index2)
+                {
+                    continue;
+                }
 
-            //    L_Output[index] = nextFloor;
-            //    nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
-            //    if (nextScoreTime < tempScoreTime)
-            //    {
-            //        tempScoreTime = nextScoreTime;
-            //    }
-            //    else
-            //    {
-            //        L_Output[index] = tempFloor;
-            //    }
-            //}
+                var nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+                var elevator1 = L_Output[index1];
+                var elevator2 = L_Output[index2];
+                if (elevator1 == elevator2)
+                {
+                    continue;
+                }
 
+                L_Output[index1] = elevator2;
+                L_Output[index2] = elevator1;
+                nextScoreTime = Calc(N, F, E, EN, L_Origin, L_Output);
+                if (nextScoreTime < tempScoreTime)
+                {
+                    tempScoreTime = nextScoreTime;
+                }
+                else
+                {
+                    L_Output[index1] = elevator1;
+                    L_Output[index2] = elevator2;
+                }
+            }
 
             Console.WriteLine(String.Join(" ", L_Output));
         }
